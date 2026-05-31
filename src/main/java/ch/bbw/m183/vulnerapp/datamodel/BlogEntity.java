@@ -7,6 +7,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -27,8 +29,12 @@ public class BlogEntity {
 	LocalDateTime createdAt;
 
 	@Column(columnDefinition = "text")
+	@NotBlank
+	@Size(max = 200)
 	String title;
 
 	@Column(columnDefinition = "text")
+	@NotBlank
+	@Size(max = 10000)
 	String body;
 }

@@ -2,6 +2,7 @@ package ch.bbw.m183.vulnerapp.controller;
 
 import ch.bbw.m183.vulnerapp.datamodel.UserEntity;
 import ch.bbw.m183.vulnerapp.service.AdminService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,7 +22,7 @@ public class AdminController {
 	private final AdminService adminService;
 
 	@PostMapping("/users")
-	public UserEntity createUser(@RequestBody UserEntity newUser) {
+	public UserEntity createUser(@Valid @RequestBody UserEntity newUser) {
 		return adminService.createUser(newUser);
 	}
 
