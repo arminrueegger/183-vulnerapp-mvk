@@ -12,37 +12,56 @@ let devToast = new bootstrap.Toast(
     { delay: 10000 }
 );
 
+function getCookie(name) {
+  const prefix = name + "=";
+  for (const c of document.cookie.split(";")) {
+    const s = c.trim();
+    if (s.startsWith(prefix)) {
+      return decodeURIComponent(s.substring(prefix.length));
+    }
+  }
+  return "";
+}
+
+function csrfHeaders(extra) {
+  return Object.assign({ "X-XSRF-TOKEN": getCookie("XSRF-TOKEN") }, extra || {});
+}
+
 function onLoginSubmit(event) {
   const username = event.target[0].value;
   const password = event.target[1].value;
   event.preventDefault();
-  fetch("/api/user/fakelogin", {
+  fetch("/login", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({username, password}),
+    headers: csrfHeaders({ "Content-Type": "application/x-www-form-urlencoded" }),
+    body: new URLSearchParams({ username, password }),
   })
+      .then(filterOk)
+      .then(() => fetch("/api/user/whoami"))
       .then(filterOk)
       .then(response => response.json())
       .then(user => window.sessionStorage.setItem("fullname", user.fullname))
-      .then(() => loginCheck());
+      .then(() => loginCheck())
+      .then(() => fetchBlogs());
 }
 
 function onLogoutSubmit(event) {
   event.preventDefault();
-  window.sessionStorage.removeItem("fullname");
-  loginCheck();
+  fetch("/logout", {
+    method: "POST",
+    headers: csrfHeaders(),
+  })
+      .then(filterOk)
+      .then(() => window.sessionStorage.removeItem("fullname"))
+      .then(() => loginCheck());
 }
 
 function onBlogSubmit(event) {
-  const data = {"title": event.target[0].value, "body": event.target[1].value};
+  const data = { "title": event.target[0].value, "body": event.target[1].value };
   event.preventDefault();
   fetch("/api/blog", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: csrfHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(data),
   })
       .then(filterOk)
@@ -68,11 +87,17 @@ function fetchBlogs() {
 
 function renderBlogs(blogs) {
   const blogDiv = document.getElementById("blog-container");
-  blogDiv.innerHTML = "" // clear
+  blogDiv.innerHTML = "";
   for (const blog of blogs) {
-    blogDiv.innerHTML += `<h2>${blog.title}</h2>
-            <p>${blog.createdAt}</p>
-            <p>${blog.body}</p>`;
+    const h2 = document.createElement("h2");
+    h2.textContent = blog.title;
+    const date = document.createElement("p");
+    date.textContent = blog.createdAt;
+    const body = document.createElement("p");
+    body.textContent = blog.body;
+    blogDiv.appendChild(h2);
+    blogDiv.appendChild(date);
+    blogDiv.appendChild(body);
   }
 }
 
