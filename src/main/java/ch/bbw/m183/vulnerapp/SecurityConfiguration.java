@@ -1,6 +1,12 @@
 package ch.bbw.m183.vulnerapp;
 
+import java.io.IOException;
+
 import ch.bbw.m183.vulnerapp.repository.UserRepository;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -14,8 +20,11 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -38,7 +47,6 @@ public class SecurityConfiguration {
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-		// using the non-XOR handler so the SPA can keep re-sending the same XSRF-TOKEN cookie value
 		var csrfHandler = new CsrfTokenRequestAttributeHandler();
 
 		return http
@@ -57,10 +65,23 @@ public class SecurityConfiguration {
 				.csrf(csrf -> csrf
 						.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
 						.csrfTokenRequestHandler(csrfHandler))
+				.addFilterAfter(new CsrfCookieFilter(), UsernamePasswordAuthenticationFilter.class)
 				.exceptionHandling(eh -> eh
 						.defaultAuthenticationEntryPointFor(
 								new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
 								req -> req.getRequestURI().startsWith("/api/")))
 				.build();
+	}
+
+	static class CsrfCookieFilter extends OncePerRequestFilter {
+		@Override
+		protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+				throws ServletException, IOException {
+			var token = (CsrfToken) request.getAttribute("_csrf");
+			if (token != null) {
+				token.getToken();
+			}
+			chain.doFilter(request, response);
+		}
 	}
 }
